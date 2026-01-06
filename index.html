@@ -3,348 +3,265 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dreamflow Command | Thinking Tools Pipeline</title>
+    <title>Custom Code Command</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dart.min.js"></script>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
-      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap");
 
-      :root {
-        --bg-neutral: #09090b;
-        --surface-card: #18181b;
-        --accent-primary: #6366f1;
-        --accent-glow: rgba(99, 102, 241, 0.15);
-        --text-main: #fafafa;
-        --text-muted: #a1a1aa;
-      }
-
+      * { box-sizing: border-box; }
+      
       body {
         font-family: "Inter", sans-serif;
-        background-color: var(--bg-neutral);
-        color: var(--text-main);
-        overflow-x: hidden;
+        background: #0a0a0b;
+        color: #fafafa;
       }
 
-      .font-mono {
-        font-family: "JetBrains Mono", monospace;
-      }
+      .code-font { font-family: "JetBrains Mono", monospace; }
 
-      .card-surface {
-        background-color: var(--surface-card);
-        border: 1px solid #27272a;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-      }
-
-      .thinking-pulse {
-        animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-
-      @keyframes pulse-glow {
-        0%, 100% {
-          opacity: 1;
-          box-shadow: 0 0 10px var(--accent-glow);
-        }
-        50% {
-          opacity: 0.6;
-          box-shadow: 0 0 2px var(--accent-glow);
-        }
-      }
-
-      .status-dot {
-        height: 8px;
-        width: 8px;
-        border-radius: 50%;
-        display: inline-block;
-      }
-      .status-dot.online {
-        background-color: #22c55e;
-        box-shadow: 0 0 8px #22c55e;
-      }
-      .status-dot.fallback {
-        background-color: #eab308;
-        box-shadow: 0 0 8px #eab308;
-      }
-      .status-dot.offline {
-        background-color: #ef4444;
-      }
-
-      .step-indicator {
-        transition: all 0.3s ease;
-      }
-      .step-indicator.active {
-        background-color: var(--accent-primary);
-        color: white;
-      }
-      .step-indicator.completed {
-        background-color: #22c55e;
-        color: white;
-      }
-
-      .pipeline-input {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
-        border: 2px solid transparent;
-        background-clip: padding-box;
-        transition: all 0.3s ease;
-      }
-      .pipeline-input:focus {
-        border-color: var(--accent-primary);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-      }
-
-      .model-select {
-        background-color: rgba(99, 102, 241, 0.1);
-        border: 1px solid rgba(99, 102, 241, 0.3);
-        color: white;
-      }
-      .model-select:focus {
-        border-color: var(--accent-primary);
-        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-      }
-
-      .result-section {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.5s ease;
-      }
-      .result-section.expanded {
-        max-height: 2000px;
-        overflow-y: auto;
-      }
-
-      .code-block {
-        background-color: #0a0a0a;
+      /* Code block with copy button */
+      .code-container {
+        position: relative;
+        background: #111113;
         border: 1px solid #27272a;
         border-radius: 8px;
-        padding: 16px;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 12px;
-        line-height: 1.5;
-        overflow-x: auto;
-        max-height: 400px;
-        overflow-y: auto;
+        margin-top: 12px;
       }
       
-      /* Scrollable step output containers */
-      #step3-output {
-        max-height: 500px;
-        overflow-y: auto;
-        padding-right: 8px;
-      }
-      .code-block pre {
+      .code-container pre {
         margin: 0;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+        padding: 16px;
+        overflow: auto;
+        max-height: 400px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .copy-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #27272a;
+        border: 1px solid #3f3f46;
+        color: #a1a1aa;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
       
-      /* Syntax Highlighting Overrides for Dark Theme */
-      .hljs {
-        background: transparent !important;
-        color: #e5e7eb !important;
+      .copy-btn:hover {
+        background: #3f3f46;
+        color: #fff;
       }
       
-      .hljs-keyword {
-        color: #c084fc !important; /* Purple for keywords */
+      .copy-btn.copied {
+        background: #22c55e;
+        border-color: #22c55e;
+        color: #fff;
+      }
+
+      /* Step cards */
+      .step-card {
+        background: #18181b;
+        border: 1px solid #27272a;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .step-header {
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      
+      .step-header:hover { background: #1f1f23; }
+
+      .step-badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #27272a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
         font-weight: 600;
+        transition: all 0.2s;
       }
       
-      .hljs-string {
-        color: #86efac !important; /* Green for strings */
+      .step-badge.active { background: #6366f1; }
+      .step-badge.done { background: #22c55e; }
+      .step-badge.error { background: #ef4444; }
+
+      .step-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
       }
       
-      .hljs-number {
-        color: #fbbf24 !important; /* Yellow for numbers */
-      }
-      
-      .hljs-comment {
-        color: #6b7280 !important; /* Gray for comments */
-        font-style: italic;
-      }
-      
-      .hljs-function {
-        color: #60a5fa !important; /* Blue for functions */
-      }
-      
-      .hljs-variable {
-        color: #f87171 !important; /* Red for variables */
-      }
-      
-      .hljs-type {
-        color: #a78bfa !important; /* Light purple for types */
-      }
-      
-      .hljs-class {
-        color: #34d399 !important; /* Emerald for classes */
-        font-weight: 600;
-      }
-      
-      .hljs-attr {
-        color: #fde047 !important; /* Yellow for attributes */
+      .step-content.open {
+        max-height: 2000px;
       }
 
-      /* Audit Report Styles */
-      .audit-report {
-        animation: fadeInUp 0.5s ease-out;
+      .step-body {
+        padding: 0 20px 20px;
       }
 
-      @keyframes fadeInUp {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+      /* Spinner */
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #27272a;
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Input area */
+      textarea {
+        background: #111113;
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        resize: none;
+        transition: border-color 0.15s;
+      }
+      
+      textarea:focus {
+        outline: none;
+        border-color: #6366f1;
       }
 
-      .audit-header h2 {
-        text-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
-      }
-
-      .audit-subsection h3 {
-        text-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
-      }
-
-      .audit-list-item {
-        transition: all 0.2s ease;
-      }
-
-      .audit-list-item:hover {
-        transform: translateX(4px);
-      }
-
-      .score-badge {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      /* Button */
+      .btn-primary {
+        background: #6366f1;
         color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: bold;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      
+      .btn-primary:hover { background: #5558e3; }
+      .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      /* Select */
+      select {
+        background: #18181b;
+        border: 1px solid #27272a;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 6px;
         font-size: 14px;
-        box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        cursor: pointer;
       }
+      
+      select:focus { outline: none; border-color: #6366f1; }
 
-      .score-badge.warning {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
-      }
+      /* Syntax highlighting */
+      .hljs { background: transparent !important; }
+      .hljs-keyword { color: #c084fc !important; }
+      .hljs-string { color: #86efac !important; }
+      .hljs-number { color: #fbbf24 !important; }
+      .hljs-comment { color: #6b7280 !important; font-style: italic; }
+      .hljs-type, .hljs-built_in { color: #a78bfa !important; }
+      .hljs-class .hljs-title { color: #34d399 !important; }
 
-      .score-badge.critical {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-        box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
-      }
+      /* Audit result styling */
+      .audit-section { margin-bottom: 16px; }
+      .audit-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+      .audit-item { padding: 8px 12px; background: #111113; border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
     </style>
   </head>
-  <body class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
-    <!-- Global Header -->
-    <header class="card-surface sticky top-0 z-50 border-b border-white/5">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <div class="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-black text-xl shadow-[0_0_15px_rgba(99,102,241,0.5)]">
-            G3
+  <body class="min-h-screen">
+    <!-- Header -->
+    <header class="border-b border-zinc-800 px-6 py-4">
+      <div class="max-w-3xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+            </svg>
           </div>
-          <div>
-            <span class="text-lg font-black tracking-tight text-white block leading-none">
-              DREAMFLOW <span class="text-indigo-500">COMMAND</span>
-            </span>
-            <span class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
-              Thinking Tools Pipeline v3.0
-            </span>
-          </div>
+          <span class="font-semibold text-lg">Custom Code Command</span>
         </div>
-
-        <!-- Model Status Indicator -->
-        <div class="flex items-center space-x-6">
-          <div class="text-right hidden sm:block">
-            <div class="text-[10px] uppercase text-gray-500 font-bold tracking-widest">
-              Execution Engine
-            </div>
-            <div id="model-status-text" class="text-xs font-mono text-white font-bold">
-              Initializing...
-            </div>
-          </div>
-          <div id="model-status-light" class="status-dot offline"></div>
+        <div class="flex items-center gap-2 text-sm text-zinc-400">
+          <span id="status-text">Checking...</span>
+          <span id="status-dot" class="w-2 h-2 rounded-full bg-zinc-600"></span>
         </div>
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-4xl mx-auto p-6 lg:p-8">
-      <!-- Pipeline Input Section -->
-      <div class="card-surface rounded-2xl p-8 mb-8">
-        <div class="text-center mb-8">
-          <h1 class="text-3xl font-black text-white mb-2">
-            Thinking Tools Pipeline
-          </h1>
-          <p class="text-gray-400">
-            Describe your FlutterFlow widget and watch it transform through AI reasoning
-          </p>
-        </div>
-
-        <!-- Bolt-style Input -->
-        <div class="relative mb-6">
-          <textarea
-            id="pipeline-input"
-            class="pipeline-input w-full h-32 p-4 rounded-xl text-gray-300 placeholder-gray-500 outline-none resize-none font-mono text-sm"
-            placeholder="Describe your FlutterFlow widget...&#10;&#10;Example: 'A credit card input widget with Luhn validation, expiry date, and CVV field'"
-          ></textarea>
-        </div>
-
-        <!-- Model Selection and Generate Button -->
-        <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <div class="flex items-center gap-4">
-            <label class="text-sm text-gray-400">Code Generator:</label>
-            <select id="code-generator-model" class="model-select px-4 py-2 rounded-lg text-sm font-medium outline-none">
+    <!-- Main -->
+    <main class="max-w-3xl mx-auto px-6 py-8">
+      <!-- Input Section -->
+      <div class="mb-8">
+        <textarea
+          id="pipeline-input"
+          class="w-full h-28 p-4 code-font text-sm text-zinc-300 placeholder-zinc-600"
+          placeholder="Describe your FlutterFlow widget..."
+        ></textarea>
+        
+        <div class="flex items-center justify-between mt-4 gap-4">
+          <div class="flex items-center gap-3">
+            <label class="text-sm text-zinc-500">Model:</label>
+            <select id="code-generator-model">
               <option value="gemini-3.0-pro">Gemini 3.0 Pro</option>
               <option value="claude-4.5-opus">Claude 4.5 Opus</option>
               <option value="gpt-5.2-codex">GPT-5.2-Codex</option>
             </select>
           </div>
-          
-          <button
-            id="btn-run-pipeline"
-            onclick="runThinkingPipeline()"
-            class="bg-indigo-600 text-white px-8 py-3 rounded-lg text-sm font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20 flex items-center"
-          >
-            <span id="pipeline-btn-text">Run Pipeline</span>
+          <button id="btn-run-pipeline" class="btn-primary" onclick="runThinkingPipeline()">
+            Generate
           </button>
         </div>
       </div>
 
       <!-- Pipeline Steps -->
-      <div class="space-y-6">
+      <div class="space-y-4">
         <!-- Step 1: Prompt Architect -->
-        <div class="card-surface rounded-xl overflow-hidden">
-          <div class="p-6 border-b border-white/5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div id="step1-indicator" class="step-indicator w-8 h-8 rounded-full bg-gray-700 text-xs font-bold flex items-center justify-center">
-                  1
-                </div>
-                <div>
-                  <h3 class="text-lg font-bold text-white">Prompt Architect</h3>
-                  <p class="text-xs text-gray-400">Gemini 3.0 Flash • Master Prompt Generation</p>
-                </div>
+        <div class="step-card">
+          <div class="step-header" onclick="toggleStep('step1')">
+            <div class="flex items-center gap-3">
+              <div id="step1-indicator" class="step-badge">1</div>
+              <div>
+                <div class="font-medium">Prompt Architect</div>
+                <div class="text-xs text-zinc-500">Optimizes your request for code generation</div>
               </div>
-              <button id="step1-toggle" onclick="toggleStep('step1')" class="text-gray-400 hover:text-white transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
             </div>
+            <svg id="step1-chevron" class="w-5 h-5 text-zinc-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
           </div>
-          
-          <div id="step1-content" class="result-section">
-            <div class="p-6">
-              <div id="step1-loading" class="hidden text-center py-8">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-                <p class="text-gray-400 mt-2">Architecting prompt...</p>
+          <div id="step1-content" class="step-content">
+            <div class="step-body">
+              <div id="step1-loading" class="hidden py-8 flex justify-center">
+                <div class="spinner"></div>
               </div>
               <div id="step1-result" class="hidden">
-                <div class="code-block">
-                  <pre id="step1-output" class="text-green-400"></pre>
+                <div class="code-container">
+                  <button class="copy-btn" onclick="copyCode('step1-output')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    Copy
+                  </button>
+                  <pre id="step1-output" class="code-font text-zinc-300"></pre>
                 </div>
               </div>
             </div>
@@ -352,75 +269,60 @@
         </div>
 
         <!-- Step 2: Code Generator -->
-        <div class="card-surface rounded-xl overflow-hidden">
-          <div class="p-6 border-b border-white/5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div id="step2-indicator" class="step-indicator w-8 h-8 rounded-full bg-gray-700 text-xs font-bold flex items-center justify-center">
-                  2
-                </div>
-                <div>
-                  <h3 class="text-lg font-bold text-white">Code Generator</h3>
-                  <p id="step2-model-info" class="text-xs text-gray-400">Model: Gemini 3.0 Pro • Dart Code Generation</p>
-                </div>
+        <div class="step-card">
+          <div class="step-header" onclick="toggleStep('step2')">
+            <div class="flex items-center gap-3">
+              <div id="step2-indicator" class="step-badge">2</div>
+              <div>
+                <div class="font-medium">Code Generator</div>
+                <div id="step2-model-info" class="text-xs text-zinc-500">Generates FlutterFlow-compatible Dart code</div>
               </div>
-              <button id="step2-toggle" onclick="toggleStep('step2')" class="text-gray-400 hover:text-white transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
             </div>
+            <svg id="step2-chevron" class="w-5 h-5 text-zinc-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
           </div>
-          
-          <div id="step2-content" class="result-section">
-            <div class="p-6">
-              <div id="step2-loading" class="hidden text-center py-8">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-                <p class="text-gray-400 mt-2">Generating code...</p>
+          <div id="step2-content" class="step-content">
+            <div class="step-body">
+              <div id="step2-loading" class="hidden py-8 flex justify-center">
+                <div class="spinner"></div>
               </div>
               <div id="step2-result" class="hidden">
-                <div class="code-block">
-                  <pre id="step2-output" class="text-indigo-300"></pre>
-                </div>
-                <div id="step2-retry" class="hidden mt-4 flex gap-2">
-                  <button onclick="retryWithDifferentModel()" class="bg-purple-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-purple-500 transition-colors">
-                    Retry with Different Model
+                <div class="code-container">
+                  <button class="copy-btn" onclick="copyCode('step2-output')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    Copy
                   </button>
+                  <pre id="step2-output" class="code-font text-zinc-300"></pre>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Step 3: Code Dissector -->
-        <div class="card-surface rounded-xl overflow-hidden">
-          <div class="p-6 border-b border-white/5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div id="step3-indicator" class="step-indicator w-8 h-8 rounded-full bg-gray-700 text-xs font-bold flex items-center justify-center">
-                  3
-                </div>
-                <div>
-                  <h3 class="text-lg font-bold text-white">Code Dissector</h3>
-                  <p class="text-xs text-gray-400">Gemini 3.0 Flash • Integration Audit</p>
-                </div>
+        <!-- Step 3: Code Audit -->
+        <div class="step-card">
+          <div class="step-header" onclick="toggleStep('step3')">
+            <div class="flex items-center gap-3">
+              <div id="step3-indicator" class="step-badge">3</div>
+              <div>
+                <div class="font-medium">Code Audit</div>
+                <div class="text-xs text-zinc-500">Validates FlutterFlow compatibility</div>
               </div>
-              <button id="step3-toggle" onclick="toggleStep('step3')" class="text-gray-400 hover:text-white transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
             </div>
+            <svg id="step3-chevron" class="w-5 h-5 text-zinc-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
           </div>
-          
-          <div id="step3-content" class="result-section">
-            <div class="p-6">
-              <div id="step3-loading" class="hidden text-center py-8">
-                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-                <p class="text-gray-400 mt-2">Analyzing code...</p>
+          <div id="step3-content" class="step-content">
+            <div class="step-body">
+              <div id="step3-loading" class="hidden py-8 flex justify-center">
+                <div class="spinner"></div>
               </div>
               <div id="step3-result" class="hidden">
-                <div id="step3-output" class="space-y-3"></div>
+                <div id="step3-output" class="text-sm text-zinc-300"></div>
               </div>
             </div>
           </div>
