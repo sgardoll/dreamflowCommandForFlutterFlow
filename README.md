@@ -28,11 +28,11 @@ FlutterFlow is incredible for building apps fast. Until you hit **the wall**.
 You need a custom radial gauge. A signature pad. An audio visualizer. A chart that doesn't exist in the component library. Suddenly, you're staring at a "Custom Widget" editor with zero guidance.
 
 **The pain points:**
-- 🚫 AI tools generate Flutter code that **breaks** in FlutterFlow
-- 🚫 `void main()` and `Scaffold` wrappers that won't compile
-- 🚫 Import statements that cause "Unknown Import" errors
-- 🚫 Data classes that don't match FlutterFlow's Struct system
-- 🚫 Hours of debugging cryptic build failures
+- AI tools generate Flutter code that **breaks** in FlutterFlow
+- `void main()` and `Scaffold` wrappers that won't compile
+- Import statements that cause "Unknown Import" errors
+- Data classes that don't match FlutterFlow's Struct system
+- Hours of debugging cryptic build failures
 
 **What if your AI actually understood FlutterFlow's constraints?**
 
@@ -54,48 +54,54 @@ It doesn't just generate Flutter code. It generates **FlutterFlow-ready artifact
 
 ## Features
 
-### 🎯 Artifact-Aware Generation
+### Artifact-Aware Generation
+
 Automatically determines whether your request needs a **Custom Function**, **Custom Action**, or **Custom Widget**—and applies the correct constraints for each.
 
 | Artifact Type | What It's For | Key Constraints |
 |---------------|---------------|-----------------|
 | **Custom Function** | Sync logic, math, formatting | No external packages, pure Dart only |
-| **Custom Action** | Async operations, APIs, side effects | Must return `Future<T>` |
-| **Custom Widget** | Visual components, charts, gestures | Must handle `width`/`height` params |
+| **Custom Action** | Async operations, APIs, side effects | Must return `Future<T>`, can use packages |
+| **Custom Widget** | Visual components, charts, gestures | Must handle `width`/`height` params, use LayoutBuilder |
 
-### 🛡️ Built-in Guardrails
+### Built-in Guardrails
+
 Every line of generated code is checked against FlutterFlow's rigid architecture:
 
-- ✅ No `main()`, `runApp()`, `MaterialApp`, or `Scaffold`
-- ✅ No import statements (FlutterFlow manages these)
-- ✅ Proper null safety with `??` and `?.` operators
-- ✅ FlutterFlow Structs instead of custom Dart classes
-- ✅ `FlutterFlowTheme.of(context)` instead of hardcoded colors
-- ✅ Correct callback signatures for Action integration
+- No `main()`, `runApp()`, `MaterialApp`, or `Scaffold`
+- No import statements (FlutterFlow manages these)
+- Proper null safety with `??` and `?.` operators
+- FlutterFlow Structs instead of custom Dart classes
+- `FlutterFlowTheme.of(context)` instead of hardcoded colors
+- Correct callback signatures with `Future<dynamic> Function()?`
+- Proper `dispose()` for controllers
 
-### 📋 Actionable Audit Reports
+### Actionable Audit Reports
+
 The **Code Dissector** doesn't just find problems—it tells you exactly what to fix:
 
 ```
 ## Overall Score: 75/100
 
 ## Critical Issues
-❌ Found `import 'package:flutter/material.dart'` on line 1
-   → Remove this. FlutterFlow manages imports automatically.
+- Found `import 'package:flutter/material.dart'` on line 1
+  → Remove this. FlutterFlow manages imports automatically.
 
 ## Required User Actions in FlutterFlow
-📦 Add to Dependencies: `google_fonts: ^6.1.0`
-📊 Create Data Type: `GaugeZoneStruct` with fields:
-   - color (Color)
-   - startAngle (Double)
-   - endAngle (Double)
+- Add to Dependencies: `google_fonts: ^6.1.0`
+- Create Data Type: `GaugeZoneStruct` with fields:
+  - color (Color)
+  - startAngle (Double)
+  - endAngle (Double)
 ```
 
-### 🤖 Multi-Model Support
+### Multi-Model Support
+
 Choose your AI backend:
-- **Gemini 3.0 Pro** (default)
-- **Claude 4.5 Opus**
-- **GPT-5.2 Codex**
+- **Gemini 3.0 Flash** (default, fastest)
+- **Gemini 2.5 Flash** (fallback)
+- **Claude 4.5 Opus** (optional)
+- **GPT-5.2 Codex** (optional)
 
 Each model receives optimized prompts tailored to its strengths.
 
@@ -106,8 +112,8 @@ Each model receives optimized prompts tailored to its strengths.
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/yourusername/flutterflow-custom-code-command.git
-cd flutterflow-custom-code-command
+git clone https://github.com/yourusername/dreamflow-command-dashboard.git
+cd dreamflow-command-dashboard
 npm install
 ```
 
@@ -117,9 +123,11 @@ Create a `.env` file in the project root:
 
 ```env
 VITE_GEMINI_API_KEY=your_gemini_api_key_here
+VITE_ANTHROPIC_API_KEY=optional
+VITE_OPENAI_API_KEY=optional
 ```
 
-Get your API key from [Google AI Studio](https://aistudio.google.com/apikey).
+Get your Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
 
 ### 3. Run
 
@@ -128,6 +136,13 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Build for Production
+
+```bash
+npm run build        # Build for production
+npm run preview      # Preview production build
+```
 
 ---
 
@@ -140,8 +155,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │                         YOUR PROMPT                                  │
 │            "Create a radial gauge with colored zones"                │
 └─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
+                                   │
+                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    STEP 1: PROMPT ARCHITECT                          │
 │                                                                      │
@@ -151,8 +166,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │  • Data Types Needed: GaugeZoneStruct                                │
 │  • Constraints: Must handle null dimensions, use LayoutBuilder       │
 └─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
+                                   │
+                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    STEP 2: CODE GENERATOR                            │
 │                                                                      │
@@ -162,8 +177,8 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │  • FlutterFlowTheme integration                                      │
 │  • Proper dispose() for controllers                                  │
 └─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
+                                   │
+                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    STEP 3: CODE DISSECTOR                            │
 │                                                                      │
@@ -173,35 +188,46 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 │  • Provides before/after code transformations                        │
 │  • Lists required user actions in FlutterFlow UI                     │
 └─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
+                                   │
+                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    READY TO PASTE                                    │
 │           Copy directly into FlutterFlow Custom Code editor          │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## Example Prompts
+### Example Prompts
 
 **Custom Widget:**
-> "Create a circular progress indicator with a gradient stroke and animated percentage text in the center"
+> "Create a circular progress indicator with a gradient stroke and animated percentage text in the center. It should accept a `progress` value from 0-100 and an optional `onComplete` callback."
 
 **Custom Action:**
-> "Write an action that compresses an image using the flutter_image_compress package and returns the compressed bytes"
+> "Write an action that compresses an image using the flutter_image_compress package and returns the compressed file bytes as a Uint8List."
 
 **Custom Function:**
-> "Create a function that validates a credit card number using the Luhn algorithm"
+> "Create a function that validates a credit card number using the Luhn algorithm and returns true/false."
 
 ---
 
 ## Tech Stack
 
-- **Frontend:** Vanilla JS + Tailwind CSS
-- **Build:** Vite
-- **AI:** Google Gemini API (with Claude/OpenAI support)
-- **Syntax Highlighting:** Highlight.js
+- **Frontend:** Vanilla JavaScript + Tailwind CSS (via CDN)
+- **Build Tool:** Vite 5.x
+- **AI APIs:** Google Gemini (required), Anthropic Claude / OpenAI GPT (optional)
+- **Syntax Highlighting:** Highlight.js with Dart language support
+- **Fonts:** Inter (UI), JetBrains Mono (code)
+
+---
+
+## Project Structure
+
+```
+├── index.html      # UI structure, Tailwind styles, templates
+├── app.js          # All application logic (single file)
+├── vite.config.js  # Dev server, API proxies
+├── package.json    # Project config & scripts
+└── .env            # API keys (gitignored)
+```
 
 ---
 
@@ -222,6 +248,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 </p>
 
 <p align="center">
-  <a href="https://github.com/yourusername/flutterflow-custom-code-command/issues">Report Bug</a> •
-  <a href="https://github.com/yourusername/flutterflow-custom-code-command/issues">Request Feature</a>
+  <a href="https://github.com/yourusername/dreamflow-command-dashboard/issues">Report Bug</a> •
+  <a href="https://github.com/yourusername/dreamflow-command-dashboard/issues">Request Feature</a>
 </p>

@@ -1,149 +1,140 @@
-# AGENTS.md - FlutterFlow Command Dashboard
+# AGENTS.md - FlutterFlow Custom Code Command
+
+## Project Overview
+
+AI-powered code generation for FlutterFlow-compatible Dart artifacts. Three-step pipeline: **Prompt Architect** → **Code Generator** → **Code Dissector**.
+
+Core constraint: FlutterFlow has rigid architectural requirements that generic AI violates. This tool embeds those constraints into every step.
+
+---
 
 ## Build & Development Commands
 
-### Development
 ```bash
-# Install dependencies (first time only)
-npm install
-
-# Start development server (recommended)
-npm run dev              # Starts Vite dev server on port 3000
-
-# Build for production
-npm run build            # Creates dist/ folder
-
-# Preview production build
-npm run preview
-
-# Alternative: Serve with basic HTTP server
-npx serve .              # Node-based server
-python -m http.server 8000  # Python server
+npm install              # Install dependencies
+npm run dev              # Start dev server (port 3000)
+npm run build            # Build for production
+npm run preview          # Preview production build
+node --check app.js      # Syntax check (no test suite)
 ```
 
-### Testing
-- No automated test suite
-- Manual testing: Open in browser and verify UI functionality
-- Test Gemini API integration requires valid API key in .env
+### Environment Setup
 
-### Linting/Formatting
-- No build process or linters configured
-- Manual code review required
+Create `.env` in project root:
+```env
+VITE_GEMINI_API_KEY=your_key_here
+VITE_ANTHROPIC_API_KEY=optional
+VITE_OPENAI_API_KEY=optional
+```
+
+---
+
+## Architecture
+
+### File Structure
+```
+├── index.html      # UI structure, Tailwind styles, templates
+├── app.js          # All application logic (single file)
+├── vite.config.js  # Dev server, API proxies
+├── .env            # API keys (gitignored)
+```
+
+### Core Pipeline Functions (app.js)
+| Function | Purpose | Output |
+|----------|---------|--------|
+| `runPromptArchitect()` | Analyzes user input | JSON spec |
+| `runCodeGenerator()` | JSON spec → code | Dart code |
+| `runCodeDissector()` | Audits for FF issues | Markdown report |
+
+### API Pattern
+```javascript
+const url = `/api/gemini/v1beta/models/${modelId}:generateContent`;
+try {
+  result = await callGemini(prompt, systemInstruction, PRIMARY_MODEL);
+} catch (error) {
+  result = await callGemini(prompt, systemInstruction, FALLBACK_MODEL);
+}
+```
 
 ---
 
 ## Code Style Guidelines
 
-### JavaScript Conventions
-- **Modern ES6+**: async/await, const/let, arrow functions, ES modules
-- **Variables**: camelCase for variables and functions
-  ```javascript
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-  const PRIMARY_MODEL = "gemini-3.0-pro-preview"; // Constants: UPPER_SNAKE_CASE
-  let currentView = "overview";                     // Mutable: camelCase
-  function runAiOptimizer() {}                       // Functions: camelCase
-  ```
-- **Async Operations**: Always use async/await with try/catch
-  ```javascript
-  async function fetchWithModel() {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Fetch failed");
-      return data;
-    } catch (error) {
-      console.warn(error);
-      return null;
-    }
-  }
-  ```
-
-### HTML Structure
-- **Multi-file architecture**: HTML structure → CSS (style block) → External JS
-- **Order**: HTML structure → CSS (style block) → Template definitions
-- **JavaScript**: Loaded as ES module via `<script type="module" src="/app.js">`
-- **Semantic HTML5**: Use proper elements (header, nav, main, section)
-- **IDs**: kebab-case (`nav-overview`, `chart-integrity`)
-- **Classes**: Tailwind utilities (kebab-case) + custom classes (camelCase)
-
-### CSS Patterns
-- **Theming**: CSS custom properties in `:root`
-  ```css
-  :root {
-    --bg-neutral: #09090b;
-    --accent-primary: #6366f1;
-  }
-  ```
-- **Tailwind CSS**: Use CDN, utility classes for layout
-- **Custom CSS**: In `<style>` block for component-specific styles
-- **Dark mode**: Neutral backgrounds (#09090b), indigo accents (#6366f1)
-- **Responsive**: Tailwind breakpoints (sm, md, lg)
-
-### Architecture Patterns
-
-#### SPA View System
-```javascript
-// Add new view:
-// 1. Create template div with id="tpl-newview"
-// 2. Add nav button with onclick="switchView('newview')"
-// 3. Template content clones to main-stage
-function switchView(viewId) {
-  const stage = document.getElementById("main-stage");
-  const tpl = document.getElementById(`tpl-${viewId}`);
-  stage.innerHTML = tpl.innerHTML;
-}
-```
-
-#### Chart Integration (Chart.js)
-```javascript
-// Add new chart:
-// 1. Create canvas element: <canvas id="chart-new"></canvas>
-// 2. Add to initCharts() function
-// 3. Destroy old charts before creating new ones
-charts.forEach((c) => c.destroy());
-charts.push(new Chart(ctx, { type: "bar", data: {...} }));
-```
-
-#### API Integration Pattern
-- **Primary → Fallback**: Always implement fallback logic
-- **No SDKs**: Use direct fetch() to API endpoints
-- **Error Handling**: Try/catch with user feedback
-- **Loading States**: Update UI during async operations
-
 ### Naming Conventions
-- **Variables**: camelCase (`currentView`, `activeModel`)
-- **Constants**: UPPER_SNAKE_CASE (`PRIMARY_MODEL`, `API_BASE_URL`)
-- **Functions**: camelCase (`runAiOptimizer`, `checkConnection`)
-- **HTML IDs**: kebab-case (`nav-overview`, `chart-integrity`)
-- **CSS Classes**: kebab-case (Tailwind), camelCase (custom)
+| Type | Convention | Example |
+|------|------------|---------|
+| Constants | UPPER_SNAKE_CASE | `PROMPT_ARCHITECT_MODEL` |
+| Functions | camelCase | `runCodeGenerator` |
+| Variables | camelCase | `pipelineState` |
+| HTML IDs | kebab-case | `main-stage` |
 
-### Dependencies
-- **External (CDN only)**: Tailwind CSS, Chart.js, Google Fonts
-- **Build Tool**: Vite (npm package) for dev server and environment variables
-- **Gemini API**: Direct REST API calls, no SDK
-- **Environment**: Load API key from .env via Vite
+### JavaScript Style
+- No semicolons at line ends
+- Template literals for string interpolation
+- Async/await over raw promises
+- Const over let, avoid var
 
 ### Error Handling
-- **Try/catch**: Wrap all async operations
-- **Fallback Logic**: Primary model → Secondary model → Offline state
-- **UI Feedback**: Update status indicators during operations
-- **Console**: Use console.warn for non-critical issues
+```javascript
+async function example() {
+  try {
+    const result = await callGemini(prompt, instruction);
+    return result;
+  } catch (error) {
+    console.error("FunctionName failed:", error);
+    throw error;
+  }
+}
+```
+- Always wrap async operations in try/catch
+- Log errors with context using function name
+- Implement fallback logic for API calls
 
-### Code Organization
-- **index.html**: HTML structure, inline CSS, template definitions
-- **app.js**: All JavaScript logic (modular ES6)
-- **.env**: Environment variables (API keys, not in git)
-- **vite.config.js**: Vite configuration for dev server
-- **package.json**: Project dependencies and scripts
+---
 
-### Environment Variables
-- Use `import.meta.env.VITE_GEMINI_API_KEY` to access API key
-- All env vars must be prefixed with `VITE_` to be exposed to client code
-- Never commit .env to git (already in .gitignore)
-- Use fallback for missing keys: `const key = import.meta.env.VITE_GEMINI_API_KEY || ""`
+## FlutterFlow-Specific Rules
 
-### Adding New Features
-1. Add HTML template in `<div id="templates">`
-2. Add nav button in sidebar
-3. Create JS function to handle feature logic
-4. Add state variables if needed
-5. Test in browser
+**CRITICAL:** Preserve these constraints in system instructions:
+
+### Forbidden Patterns (Code Generator must NOT output)
+- `void main()` or `main()` function
+- `runApp()`, `MaterialApp`, `Scaffold`
+- Any `import` statements (FlutterFlow manages imports)
+- Custom Dart classes for data models (use FF Structs)
+
+### Required Patterns (Code Generator MUST include)
+- `width` and `height` parameters for Custom Widgets
+- Null safety with `??` and `?.` operators
+- `FlutterFlowTheme.of(context)` for colors
+- `Future<dynamic> Function()?` for action callbacks
+- Proper `dispose()` for controllers
+
+### The Three Artifact Types
+| Type | Constraints |
+|------|-------------|
+| Custom Function | Sync only, NO external packages, pure Dart |
+| Custom Action | Must return `Future<T>`, external packages OK |
+| Custom Widget | Must handle null width/height, use LayoutBuilder |
+
+---
+
+## Adding Features
+
+### New Pipeline Step
+1. Create `async function runNewStep()` in app.js
+2. Add systemInstruction with FlutterFlow constraints
+3. Wire into `runThinkingPipeline()`, add UI in index.html
+
+### Modifying System Instructions
+1. Locate: `runPromptArchitect`, `runCodeGenerator`, or `runCodeDissector`
+2. Edit the `systemInstruction` template literal
+3. **Preserve FlutterFlow constraints** - non-negotiable
+
+---
+
+## Dependencies
+
+- **Runtime:** None (vanilla JS)
+- **Build:** Vite 5.x
+- **CDN:** Tailwind CSS, Highlight.js, Google Fonts
+- **APIs:** Gemini (required), Claude/OpenAI (optional)
