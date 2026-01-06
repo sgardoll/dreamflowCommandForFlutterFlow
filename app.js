@@ -20,20 +20,10 @@ let pipelineState = {
 // --- CORE API FUNCTIONS ---
 
 async function checkConnection() {
-  const statusText = document.getElementById("status-text");
-  const statusDot = document.getElementById("status-dot");
-
   if (!geminiApiKey) {
-    if (statusText) statusText.innerText = "No API Key";
-    if (statusDot) statusDot.className = "w-2 h-2 rounded-full bg-red-500";
-    console.error(
-      "Gemini API Key not found. Check .env file for VITE_GEMINI_API_KEY"
-    );
+    console.error("Gemini API Key not found. Check .env file for VITE_GEMINI_API_KEY");
     return false;
   }
-
-  if (statusText) statusText.innerText = "Ready";
-  if (statusDot) statusDot.className = "w-2 h-2 rounded-full bg-green-500";
   return true;
 }
 
