@@ -36,7 +36,8 @@ async function checkConnection() {
 }
 
 async function callGemini(prompt, systemInstruction, modelId = PROMPT_ARCHITECT_MODEL) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${geminiApiKey}`;
+  // Use proxy to avoid CORS issues
+  const url = `/api/gemini/v1beta/models/${modelId}:generateContent?key=${geminiApiKey}`;
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
     systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -72,7 +73,8 @@ async function callClaude(prompt, systemInstruction) {
     throw new Error("Anthropic API key not found");
   }
 
-  const url = "https://api.anthropic.com/v1/messages";
+  // Use proxy to avoid CORS issues
+  const url = "/api/anthropic/v1/messages";
   const payload = {
     model: "claude-4-5-opus-2024-10-22",
     max_tokens: 4000,
@@ -86,7 +88,8 @@ async function callClaude(prompt, systemInstruction) {
       headers: {
         "Content-Type": "application/json",
         "x-api-key": anthropicApiKey,
-        "anthropic-version": "2023-06-01"
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
       },
       body: JSON.stringify(payload),
     });
@@ -98,6 +101,10 @@ async function callClaude(prompt, systemInstruction) {
       // Handle specific error types
       if (errorText.includes("image") || errorText.includes("media")) {
         throw new Error("Claude API error: This model doesn't support image input. Please use Gemini 3.0 Pro for image-based requests.");
+      }
+      
+      if (response.status === 401) {
+        throw new Error("Claude API authentication failed. Please check your Anthropic API key in the .env file.");
       }
       
       throw new Error(`Claude API failed: ${response.status}`);
@@ -116,7 +123,8 @@ async function callOpenAI(prompt, systemInstruction) {
     throw new Error("OpenAI API key not found");
   }
 
-  const url = "https://api.openai.com/v1/chat/completions";
+  // Use proxy to avoid CORS issues
+  const url = "/api/openai/v1/chat/completions";
   const payload = {
     model: "gpt-5.2-codex",
     messages: [
@@ -144,6 +152,10 @@ async function callOpenAI(prompt, systemInstruction) {
       // Handle specific error types
       if (errorText.includes("image") || errorText.includes("vision") || errorText.includes("media")) {
         throw new Error("OpenAI API error: This model doesn't support image input. Please use Gemini 3.0 Pro for image-based requests.");
+      }
+      
+      if (response.status === 401) {
+        throw new Error("OpenAI API authentication failed. Please check your OpenAI API key in the .env file.");
       }
       
       throw new Error(`OpenAI API failed: ${response.status}`);
@@ -211,6 +223,19 @@ Output ONLY the complete Dart code, no explanations.`;
     return result;
   } catch (error) {
     console.error("Code Generator failed:", error);
+    
+    // If selected model failed due to API key issues, fallback to Gemini
+    if (error.message.includes("authentication") || error.message.includes("401")) {
+      console.log("Selected model failed due to API key issues, falling back to Gemini 3.0 Pro...");
+      try {
+        result = await callGemini(masterPrompt, systemInstruction, "gemini-3.0-pro-preview");
+        return result;
+      } catch (fallbackError) {
+        console.error("Gemini fallback also failed:", fallbackError);
+        throw new Error(`All models failed. Original error: ${error.message}. Fallback error: ${fallbackError.message}`);
+      }
+    }
+    
     throw error;
   }
 }
@@ -491,7 +516,6 @@ function updateModelInfo(selectedModel) {
 
 async function runThinkingPipeline() {
   console.log('runThinkingPipeline called');
-  alert('Button clicked! Pipeline starting...');
   if (pipelineState.isRunning) return;
   
   const userInput = document.getElementById("pipeline-input").value;
@@ -582,21 +606,32 @@ async function runThinkingPipeline() {
     const resultDiv = document.getElementById(`step${errorStep}-result`);
     const loadingDiv = document.getElementById(`step${errorStep}-loading`);
     const output = document.getElementById(`step${errorStep}-output`);
+    const contentDiv = document.getElementById(`step${errorStep}-content`);
     
-    // Hide loading and show error
+    // Hide loading and show error, but keep content expanded
     if (loadingDiv) loadingDiv.classList.add("hidden");
     if (resultDiv) resultDiv.classList.remove("hidden");
+    if (contentDiv && !contentDiv.classList.contains("expanded")) {
+      contentDiv.classList.add("expanded");
+    }
     
     if (output) {
       // Format error message based on type
       let errorMessage = error.message;
       if (error.message.includes("image input")) {
         errorMessage = "This model doesn't support image input. Please use Gemini 3.0 Pro for image-based requests or remove image references from your prompt.";
+      } else if (error.message.includes("Load failed") || error.message.includes("CORS")) {
+        errorMessage = "API connection failed. This might be due to CORS restrictions or network issues. Please check your API key and try again.";
       }
       
       output.innerHTML = `<div class="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-        <h4 class="text-red-400 font-bold text-xs uppercase mb-2">Error</h4>
+        <h4 class="text-red-400 font-bold text-xs uppercase mb-2">Connection Error</h4>
         <p class="text-sm text-red-300">${errorMessage}</p>
+        <div class="mt-3 text-xs text-gray-400">
+          <p>• Check if API key is valid</p>
+          <p>• Try using a different model</p>
+          <p>• Ensure network allows API calls</p>
+        </div>
       </div>`;
     }
     

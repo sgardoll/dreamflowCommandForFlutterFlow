@@ -6,7 +6,30 @@ export default defineConfig(({ mode }) => {
   return {
     server: {
       port: 3000,
-      open: true
+      open: true,
+      proxy: {
+        '/api/gemini': {
+          target: 'https://generativelanguage.googleapis.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/gemini/, ''),
+          secure: true
+        },
+        '/api/anthropic': {
+          target: 'https://api.anthropic.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/anthropic/, ''),
+          secure: true,
+          headers: {
+            'anthropic-dangerous-direct-browser-access': 'true'
+          }
+        },
+        '/api/openai': {
+          target: 'https://api.openai.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/openai/, ''),
+          secure: true
+        }
+      }
     },
     define: {
       'import.meta.env.VITE_GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || '')
