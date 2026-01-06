@@ -110,7 +110,8 @@
         transition: max-height 0.5s ease;
       }
       .result-section.expanded {
-        max-height: 1000px;
+        max-height: 2000px;
+        overflow-y: auto;
       }
 
       .code-block {
@@ -122,6 +123,15 @@
         font-size: 12px;
         line-height: 1.5;
         overflow-x: auto;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      
+      /* Scrollable step output containers */
+      #step3-output {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 8px;
       }
       .code-block pre {
         margin: 0;

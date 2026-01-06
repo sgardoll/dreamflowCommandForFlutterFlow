@@ -76,7 +76,7 @@ async function callClaude(prompt, systemInstruction) {
   // Use proxy to avoid CORS issues
   const url = "/api/anthropic/v1/messages";
   const payload = {
-    model: "claude-4-5-opus-2024-10-22",
+    model: "claude-opus-4-5-20251101",
     max_tokens: 4000,
     system: systemInstruction,
     messages: [{ role: "user", content: prompt }]
@@ -667,12 +667,30 @@ function retryWithDifferentModel() {
 
 // --- SYNTAX HIGHLIGHTING ---
 
+// Extract code from markdown code blocks (strips ```dart ... ```)
+function extractCodeFromMarkdown(text) {
+  if (!text) return text;
+  
+  // Match ```language\n...code...\n``` pattern
+  const codeBlockRegex = /```(?:\w+)?\n?([\s\S]*?)```/;
+  const match = text.match(codeBlockRegex);
+  
+  if (match) {
+    return match[1].trim();
+  }
+  
+  // If no code block found, return original text trimmed
+  return text.trim();
+}
+
 function highlightCode(code, language = 'dart') {
   try {
-    return hljs.highlight(code, { language: language }).value;
+    // Strip markdown code fences before highlighting
+    const cleanCode = extractCodeFromMarkdown(code);
+    return hljs.highlight(cleanCode, { language: language }).value;
   } catch (error) {
     console.warn('Syntax highlighting failed:', error);
-    return code;
+    return extractCodeFromMarkdown(code);
   }
 }
 
