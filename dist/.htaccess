@@ -1,0 +1,16 @@
+# Custom Code Command - SiteGround (Apache) routing
+
+RewriteEngine On
+
+# --- API proxies (must come before SPA fallback) ---
+RewriteRule ^api/gemini/(.*)$ api/gemini-proxy.php?path=$1 [QSA,L]
+RewriteRule ^api/anthropic/(.*)$ api/anthropic-proxy.php?path=$1 [QSA,L]
+RewriteRule ^api/openai/(.*)$ api/openai-proxy.php?path=$1 [QSA,L]
+
+# --- Static file / directory passthrough ---
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# --- SPA fallback ---
+RewriteRule . index.html [L]

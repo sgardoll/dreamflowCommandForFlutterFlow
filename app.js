@@ -374,22 +374,25 @@ async function callGemini(
   systemInstruction,
   modelId = PROMPT_ARCHITECT_MODEL
 ) {
-  // Use proxy to avoid CORS issues
-  const url = `/api/gemini/v1beta/models/${modelId}:generateContent?key=${geminiApiKey}`;
+  // Use same-origin proxy to avoid CORS issues
+  const url = `/api/gemini/v1beta/models/${modelId}:generateContent`
   const payload = {
     contents: [{ parts: [{ text: prompt }] }],
     systemInstruction: { parts: [{ text: systemInstruction }] },
     generationConfig: {
       maxOutputTokens: 16384,
     },
-  };
+  }
 
   try {
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": geminiApiKey,
+      },
       body: JSON.stringify(payload),
-    });
+    })
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1275,6 +1278,19 @@ function toggleStep(step) {
 }
 
 function selectWorkflowStep(step) {
+  // Remove active class from all workflow items
+  for (let i = 1; i <= 3; i++) {
+    const item = document.getElementById(`step${i}-item`);
+    if (item) item.classList.remove("active");
+  }
+
+  // Add active class to selected workflow item
+  const selectedItem = document.getElementById(`step${step}-item`);
+  if (selectedItem) selectedItem.classList.add("active");
+
+  // Hide welcome video
+  dismissWelcomeVideo();
+
   // Hide ready state
   const readyState = document.getElementById("ready-state");
   if (readyState) readyState.classList.add("hidden");
@@ -1283,7 +1299,7 @@ function selectWorkflowStep(step) {
   for (let i = 1; i <= 3; i++) {
     const content = document.getElementById(`step${i}-content`);
     if (content) content.classList.add("hidden");
-  }
+}
 
   // Show selected step content
   const selectedContent = document.getElementById(`step${step}-content`);
@@ -1354,7 +1370,12 @@ async function runThinkingPipeline() {
     selectedModel !== "gemini-3.0-pro" &&
     (userInput.toLowerCase().includes("screenshot") ||
       userInput.toLowerCase().includes("image") ||
-      userInput.toLowerCase().includes("picture"))
+      userInput.toLowerCase().includes("picture") ||
+      userInput.toLowerCase().includes(".png") ||
+      userInput.toLowerCase().includes(".jpg") ||
+      userInput.toLowerCase().includes(".jpeg") ||
+      userInput.toLowerCase().includes(".gif") ||
+      userInput.toLowerCase().includes("Screenshot"))
   ) {
     const proceed = confirm(
       "⚠️ Your request mentions images.\n\n" +
@@ -1384,7 +1405,8 @@ async function runThinkingPipeline() {
   updateModelInfo(selectedModel);
 
   try {
-    // Hide ready state, show step 1
+    // Dismiss welcome video and hide ready state, show step 1
+    dismissWelcomeVideo();
     const readyState = document.getElementById("ready-state");
     if (readyState) readyState.classList.add("hidden");
 
@@ -1547,9 +1569,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     classPrefix: "hljs-",
   })
 
+  // Initialize welcome video
+  initializeWelcomeVideo()
+
   // Initialize API keys and check connection
   await checkConnection()
 })
+
+// --- WELCOME VIDEO FUNCTIONS ---
+function initializeWelcomeVideo() {
+  // Always show the welcome video - remove sessionStorage check
+  
+  // Ensure video plays when page loads
+  const video = document.getElementById("welcome-video-player");
+  if (video) {
+    // Try to play video, handling autoplay policies
+    video.play().catch(e => {
+      console.log('Autoplay prevented, video will play on first user interaction');
+      // Add click listener to start video if autoplay blocked
+      video.addEventListener('click', () => {
+        video.play();
+      }, { once: true });
+    });
+  }
+}
+
+function handleWelcomeVideoEnd() {
+  // Keep video on final frame until user interaction
+  // Video stays paused on last frame
+  const video = document.getElementById("welcome-video-player");
+  if (video) {
+    video.pause();
+    // Add click listener to dismiss video
+    video.addEventListener('click', dismissWelcomeVideo);
+    document.addEventListener('keydown', dismissWelcomeVideo);
+  }
+}
+
+function dismissWelcomeVideo() {
+  const welcomeVideo = document.getElementById("welcome-video");
+  const readyState = document.getElementById("ready-state");
+  
+  if (welcomeVideo) welcomeVideo.classList.add("hidden");
+  if (readyState) readyState.classList.remove("hidden");
+  
+  // Clean up event listeners
+  const video = document.getElementById("welcome-video-player");
+  if (video) {
+    video.removeEventListener('click', dismissWelcomeVideo);
+  }
+  document.removeEventListener('keydown', dismissWelcomeVideo);
+}
 
 // Global exports
 window.runThinkingPipeline = runThinkingPipeline
@@ -1563,3 +1633,5 @@ window.closeApiKeysModal = closeApiKeysModal
 window.saveApiKeys = saveApiKeys
 window.clearAllApiKeys = clearAllApiKeys
 window.toggleKeyVisibility = toggleKeyVisibility
+window.handleWelcomeVideoEnd = handleWelcomeVideoEnd
+window.dismissWelcomeVideo = dismissWelcomeVideo
