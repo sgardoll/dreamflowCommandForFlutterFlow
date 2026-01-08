@@ -344,6 +344,113 @@
         animation: spin 0.8s linear infinite;
       }
 
+      /* Modal styles */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+      }
+
+      .modal-overlay.open {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .modal-content {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        overflow-y: auto;
+        transform: scale(0.95);
+        transition: transform 0.2s;
+      }
+
+      .modal-overlay.open .modal-content {
+        transform: scale(1);
+      }
+
+      /* API Key input styles */
+      .api-key-input {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-family: "JetBrains Mono", monospace;
+        width: 100%;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+
+      .api-key-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .api-key-input::placeholder {
+        color: #9ca3af;
+        font-family: "Inter", sans-serif;
+      }
+
+      /* Key status indicators */
+      .key-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+
+      .key-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .key-status-dot.configured {
+        background: #22c55e;
+      }
+
+      .key-status-dot.env {
+        background: #3b82f6;
+      }
+
+      .key-status-dot.missing {
+        background: #9ca3af;
+      }
+
+      /* Settings button */
+      .settings-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: transparent;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        color: #374151;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        width: 100%;
+      }
+
+      .settings-btn:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+      }
+
       /* Active stage content */
       .stage-content {
         padding: 24px;
@@ -364,13 +471,12 @@
       <!-- Sidebar -->
       <aside class="sidebar">
         <!-- Header -->
-        <div class="px-5 py-4 border-b border-gray-200 flex items-center gap-3">
-          <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-          </div>
-          <span class="font-semibold text-lg text-gray-900">Custom Code Command</span>
+        <div class="border-b border-gray-200">
+          <img
+            src="/sidebar-header.png"
+            alt="FlutterFlow - Custom Code Command"
+            class="w-full h-auto block"
+          />
         </div>
 
         <!-- Design Prompt Canvas -->
@@ -420,6 +526,21 @@
               <path d="M8 5v14l11-7z"/>
             </svg>
             Run Pipeline
+          </button>
+        </div>
+
+        <!-- API Keys Settings -->
+        <div class="p-5 border-b border-gray-200">
+          <button class="settings-btn" onclick="openApiKeysModal()">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+            </svg>
+            <span>API Keys</span>
+            <div id="api-keys-status" class="ml-auto flex gap-1">
+              <div class="key-status-dot missing" title="Gemini"></div>
+              <div class="key-status-dot missing" title="Claude"></div>
+              <div class="key-status-dot missing" title="OpenAI"></div>
+            </div>
           </button>
         </div>
 
@@ -559,6 +680,146 @@
           </div>
         </div>
       </main>
+    </div>
+
+    <!-- API Keys Modal -->
+    <div id="api-keys-modal" class="modal-overlay" onclick="closeApiKeysModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="font-semibold text-lg text-gray-900">API Keys</h2>
+          <button onclick="closeApiKeysModal()" class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <p class="text-sm text-gray-600">
+            Configure your API keys to use different AI models. Keys are encrypted and stored locally in your browser.
+          </p>
+
+          <!-- Gemini API Key -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                Google Gemini API Key
+              </span>
+            </label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="gemini-api-key-input" 
+                class="api-key-input pr-10" 
+                placeholder="Enter your Gemini API key"
+              />
+              <button 
+                onclick="toggleKeyVisibility('gemini-api-key-input')" 
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+            <div id="gemini-key-status" class="key-status">
+              <div class="key-status-dot missing"></div>
+              <span class="text-gray-500">Not configured</span>
+            </div>
+          </div>
+
+          <!-- Anthropic API Key -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                Anthropic Claude API Key
+              </span>
+            </label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="anthropic-api-key-input" 
+                class="api-key-input pr-10" 
+                placeholder="Enter your Claude API key"
+              />
+              <button 
+                onclick="toggleKeyVisibility('anthropic-api-key-input')" 
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+            <div id="anthropic-key-status" class="key-status">
+              <div class="key-status-dot missing"></div>
+              <span class="text-gray-500">Not configured</span>
+            </div>
+          </div>
+
+          <!-- OpenAI API Key -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.8956zm16.5963 3.8558L13.1038 8.364l2.0201-1.1638a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.4091-.6813zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+                </svg>
+                OpenAI API Key
+              </span>
+            </label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="openai-api-key-input" 
+                class="api-key-input pr-10" 
+                placeholder="Enter your OpenAI API key"
+              />
+              <button 
+                onclick="toggleKeyVisibility('openai-api-key-input')" 
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+            <div id="openai-key-status" class="key-status">
+              <div class="key-status-dot missing"></div>
+              <span class="text-gray-500">Not configured</span>
+            </div>
+          </div>
+
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p class="text-xs text-blue-700">
+              <strong>Security:</strong> Your API keys are encrypted using AES-256 before being stored in your browser's local storage. Keys are never sent to our servers.
+            </p>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+          <button 
+            onclick="clearAllApiKeys()" 
+            class="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            Clear All Keys
+          </button>
+          <button 
+            onclick="saveApiKeys()" 
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+          >
+            Save Keys
+          </button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="/app.js"></script>

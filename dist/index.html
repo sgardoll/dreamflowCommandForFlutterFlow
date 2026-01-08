@@ -3,488 +3,759 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dreamflow Command | Gemini 3.0 Architecture</title>
+    <title>Custom Code Command</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dart.min.js"></script>
     <style>
-      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
-      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap");
-      :root {
-        --bg-neutral: #09090b;
-        --surface-card: #18181b;
-        --accent-primary: #6366f1; /* Indigo 500 */
-        --accent-glow: rgba(99, 102, 241, 0.15);
-        --text-main: #fafafa;
-        --text-muted: #a1a1aa;
-      }
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap");
+      * { box-sizing: border-box; }
       body {
         font-family: "Inter", sans-serif;
-        background-color: var(--bg-neutral);
-        color: var(--text-main);
-        overflow-x: hidden;
+        background: #f8f9fa;
+        color: #1a1a1a;
       }
-      .font-mono {
-        font-family: "JetBrains Mono", monospace;
+      .code-font { font-family: "JetBrains Mono", monospace; }
+      /* Sidebar */
+      .sidebar {
+        width: 380px;
+        min-width: 380px;
+        background: #fff;
+        border-right: 1px solid #e5e7eb;
+        height: 100vh;
+        overflow-y: auto;
       }
-      .card-surface {
-        background-color: var(--surface-card);
-        border: 1px solid #27272a;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+      /* Main content area */
+      .main-content {
+        flex: 1;
+        background: #f3f4f6;
+        min-height: 100vh;
+        padding: 24px;
       }
-      .chart-wrapper {
+      .main-stage {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        min-height: calc(100vh - 48px);
+      }
+      /* Collapsible sections */
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.15s;
+      }
+      .section-header:hover {
+        background: #f9fafb;
+      }
+      .section-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+      }
+      .section-content.open {
+        max-height: 2000px;
+      }
+      /* Workflow status items */
+      .workflow-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        border-left: 4px solid transparent;
+        transition: all 0.2s ease;
+        cursor: pointer;
+      }
+      .workflow-item:hover {
+        background: #f9fafb;
+      }
+      .workflow-item.active {
+        border-left-color: #3b82f6 !important;
+        background: #dbeafe !important;
+      }
+      .workflow-item.active .workflow-label {
+        color: #1d4ed8 !important;
+        font-weight: 600 !important;
+      }
+      .workflow-item.active .workflow-icon svg {
+        color: #3b82f6 !important;
+        stroke: #3b82f6 !important;
+      }
+      .workflow-item.completed {
+        border-left-color: #22c55e !important;
+        background: #dcfce7 !important;
+      }
+      .workflow-item.completed .workflow-label {
+        color: #166534 !important;
+        font-weight: 500 !important;
+      }
+      .workflow-item.completed .workflow-icon svg {
+        color: #22c55e !important;
+        stroke: #22c55e !important;
+      }
+      .workflow-item.error {
+        border-left-color: #ef4444 !important;
+        background: #fee2e2 !important;
+      }
+      .workflow-item.error .workflow-label {
+        color: #dc2626 !important;
+        font-weight: 500 !important;
+      }
+      .workflow-item.error .workflow-icon svg {
+        color: #ef4444 !important;
+        stroke: #ef4444 !important;
+      }
+      /* Status icons */
+      .status-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #9ca3af;
+      }
+      .status-icon.running {
+        animation: spin 1s linear infinite;
+      }
+      .status-icon.running svg {
+        color: #3b82f6 !important;
+        stroke: #3b82f6 !important;
+      }
+      .status-icon.completed svg {
+        color: #22c55e !important;
+        stroke: #22c55e !important;
+      }
+      .status-icon.error svg {
+        color: #ef4444 !important;
+        stroke: #ef4444 !important;
+      }
+      /* Default workflow item styles */
+      .workflow-item .workflow-icon svg {
+        color: #9ca3af;
+        stroke: #9ca3af;
+      }
+      .workflow-item .workflow-label {
+        color: #374151;
+      }
+      .workflow-item .status-icon svg {
+        color: #9ca3af;
+        stroke: #9ca3af;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      /* Textarea */
+      textarea {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        resize: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      textarea:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      textarea::placeholder {
+        color: #9ca3af;
+      }
+      /* Select */
+      select {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        color: #1a1a1a;
+        padding: 10px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        cursor: pointer;
+        width: 100%;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 16px;
+        padding-right: 40px;
+      }
+      select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      /* Primary button */
+      .btn-primary {
+        background: #3b82f6;
+        color: white;
+        font-weight: 600;
+        padding: 12px 24px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        font-size: 15px;
+      }
+      .btn-primary:hover { background: #2563eb; }
+      .btn-primary:disabled { 
+        opacity: 0.6; 
+        cursor: not-allowed;
+        background: #3b82f6;
+      }
+      /* Code block with copy button */
+      .code-container {
         position: relative;
-        width: 100%;
-        height: 300px;
+        background: #1e1e1e;
+        border: 1px solid #333;
+        border-radius: 8px;
+        margin-top: 12px;
+        overflow: hidden;
       }
-      .nav-link.active {
-        background-color: rgba(99, 102, 241, 0.1);
-        color: #818cf8;
-        border-left: 3px solid #6366f1;
+      .code-container pre {
+        margin: 0;
+        padding: 16px;
+        padding-top: 48px;
+        overflow: auto;
+        max-height: 600px;
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        word-break: break-word;
       }
-      .thinking-pulse {
-        animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-      @keyframes pulse-glow {
-        0%,
-        100% {
-          opacity: 1;
-          box-shadow: 0 0 10px var(--accent-glow);
-        }
-        50% {
-          opacity: 0.6;
-          box-shadow: 0 0 2px var(--accent-glow);
-        }
-      }
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #09090b;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #3f3f46;
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #52525b;
-      }
-      .status-dot {
-        height: 8px;
-        width: 8px;
-        border-radius: 50%;
-        display: inline-block;
-      }
-      .status-dot.online {
-        background-color: #22c55e;
-        box-shadow: 0 0 8px #22c55e;
-      }
-      .status-dot.fallback {
-        background-color: #eab308;
-        box-shadow: 0 0 8px #eab308;
-      }
-      .status-dot.offline {
-        background-color: #ef4444;
-      }
-      .scan-line {
-        width: 100%;
-        height: 2px;
-        background: linear-gradient(
-          to right,
-          transparent,
-          #6366f1,
-          transparent
-        );
+      .copy-btn {
         position: absolute;
-        top: 0;
-        left: 0;
-        animation: scan 3s linear infinite;
-        opacity: 0.3;
-        pointer-events: none;
+        top: 8px;
+        right: 8px;
+        background: #333;
+        border: 1px solid #444;
+        color: #a1a1aa;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
       }
-      @keyframes scan {
-        0% {
-          top: 0%;
-        }
-        100% {
-          top: 100%;
-        }
+      .copy-btn:hover {
+        background: #444;
+        color: #fff;
+      }
+      .copy-btn.copied {
+        background: #22c55e;
+        border-color: #22c55e;
+        color: #fff;
+      }
+      /* Ready state icon */
+      .ready-icon {
+        width: 80px;
+        height: 80px;
+        border: 2px solid #e5e7eb;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+      }
+      .ready-icon svg {
+        width: 32px;
+        height: 32px;
+        color: #d1d5db;
+      }
+      /* Syntax highlighting */
+      .hljs { background: transparent !important; }
+      .hljs-keyword { color: #c084fc !important; }
+      .hljs-string { color: #86efac !important; }
+      .hljs-number { color: #fbbf24 !important; }
+      .hljs-comment { color: #6b7280 !important; font-style: italic; }
+      .hljs-type, .hljs-built_in { color: #a78bfa !important; }
+      .hljs-class .hljs-title { color: #34d399 !important; }
+      /* Audit result styling */
+      .audit-section { margin-bottom: 16px; }
+      .audit-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+      .audit-item { padding: 8px 12px; background: #f3f4f6; border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
+      /* Spinner for loading */
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #e5e7eb;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      /* Modal styles */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+      }
+      .modal-overlay.open {
+        opacity: 1;
+        visibility: visible;
+      }
+      .modal-content {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        overflow-y: auto;
+        transform: scale(0.95);
+        transition: transform 0.2s;
+      }
+      .modal-overlay.open .modal-content {
+        transform: scale(1);
+      }
+      /* API Key input styles */
+      .api-key-input {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-family: "JetBrains Mono", monospace;
+        width: 100%;
+        transition: border-color 0.15s, box-shadow 0.15s;
+      }
+      .api-key-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      .api-key-input::placeholder {
+        color: #9ca3af;
+        font-family: "Inter", sans-serif;
+      }
+      /* Key status indicators */
+      .key-status {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      .key-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .key-status-dot.configured {
+        background: #22c55e;
+      }
+      .key-status-dot.env {
+        background: #3b82f6;
+      }
+      .key-status-dot.missing {
+        background: #9ca3af;
+      }
+      /* Settings button */
+      .settings-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: transparent;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        color: #374151;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        width: 100%;
+      }
+      .settings-btn:hover {
+        background: #f9fafb;
+        border-color: #d1d5db;
+      }
+      /* Active stage content */
+      .stage-content {
+        padding: 24px;
+      }
+      .stage-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 48px;
+        text-align: center;
       }
     </style>
-    <!-- 
-    STRATEGIC ARCHITECTURE:
-    - Primary Execution Engine: gemini-3.0-pro-preview (Thinking Config: HIGH)
-    - Fallback Engine: gemini-2.5-flash-preview-09-2025 (For sandbox compatibility)
-    - UX: "Dark Mode" Command Center interface to reduce visual noise and focus on architectural data.
-    -->
-    <script type="module" crossorigin src="/assets/index-DcT-QQC1.js"></script>
+    <script type="module" crossorigin src="/assets/index-COAh9xUw.js"></script>
   </head>
-  <body
-    class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white"
-  >
-    <!-- Global Header -->
-    <header class="card-surface sticky top-0 z-50 border-b border-white/5">
-      <div
-        class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between"
-      >
-        <div class="flex items-center space-x-4">
-          <div
-            class="h-10 w-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-black text-xl shadow-[0_0_15px_rgba(99,102,241,0.5)]"
-          >
-            G3
-          </div>
-          <div>
-            <span
-              class="text-lg font-black tracking-tight text-white block leading-none"
-              >DREAMFLOW <span class="text-indigo-500">COMMAND</span></span
-            >
-            <span
-              class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]"
-              >Architectural Suite v3.0</span
-            >
-          </div>
+  <body>
+    <div class="flex">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <!-- Header -->
+        <div class="border-b border-gray-200">
+          <img
+            src="/sidebar-header.png"
+            alt="FlutterFlow - Custom Code Command"
+            class="w-full h-auto block"
+          />
         </div>
 
-        <!-- Model Status Indicator -->
-        <div class="flex items-center space-x-6">
-          <div class="text-right hidden sm:block">
-            <div
-              class="text-[10px] uppercase text-gray-500 font-bold tracking-widest"
-            >
-              Execution Engine
+        <!-- Design Prompt Canvas -->
+        <div class="p-5 border-b border-gray-200">
+          <div class="flex items-center gap-2 mb-3">
+            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/>
+            </svg>
+            <span class="font-medium text-gray-900">Design Prompt Canvas</span>
+          </div>
+          <textarea
+            id="pipeline-input"
+            class="w-full h-32 p-3 text-gray-700"
+            placeholder="Describe your UI component here... (e.g., A responsive card with an image, title, and description, on a subtle gradient background)"
+          ></textarea>
+        </div>
+
+        <!-- Code Generation Options -->
+        <div class="border-b border-gray-200">
+          <div class="section-header" onclick="toggleSection('code-options')">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+              </svg>
+              <span class="font-medium text-gray-900">Code Generation Options</span>
             </div>
-            <div
-              id="model-status-text"
-              class="text-xs font-mono text-white font-bold"
-            >
-              Initializing...
+            <svg id="code-options-chevron" class="w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+          <div id="code-options-content" class="section-content open">
+            <div class="px-5 pb-5">
+              <label class="block text-sm text-gray-600 mb-2">Model Selector</label>
+              <select id="code-generator-model">
+                <option value="gemini-3.0-pro" selected>Gemini 3.0 Pro</option>
+                <option value="claude-4.5-opus">Claude 4.5 Opus</option>
+                <option value="gpt-5.2-codex">GPT-5.2-Codex</option>
+              </select>
             </div>
           </div>
-          <div id="model-status-light" class="status-dot offline"></div>
-        </div>
-      </div>
-    </header>
-
-    <div
-      class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8"
-    >
-      <!-- Sidebar Navigation -->
-      <nav class="lg:col-span-3 space-y-6">
-        <div class="card-surface rounded-xl p-1 overflow-hidden">
-          <div
-            class="px-4 py-3 bg-white/5 border-b border-white/5 flex justify-between items-center"
-          >
-            <span
-              class="text-[10px] font-black uppercase tracking-widest text-indigo-400"
-              >Navigation</span
-            >
-          </div>
-          <div class="p-2 space-y-1">
-            <button
-              onclick="switchView('overview')"
-              id="nav-overview"
-              class="nav-link active w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5"
-            >
-              Overview & Metrics
-            </button>
-            <button
-              onclick="switchView('constraints')"
-              id="nav-constraints"
-              class="nav-link w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5"
-            >
-              Hard Constraints
-            </button>
-            <button
-              onclick="switchView('ai-tools')"
-              id="nav-ai-tools"
-              class="nav-link w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5 flex justify-between items-center group"
-            >
-              <span>Thinking Tools</span>
-              <span
-                class="text-[9px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-bold"
-                >PRO</span
-              >
-            </button>
-            <button
-              onclick="switchView('actions')"
-              id="nav-actions"
-              class="nav-link w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5"
-            >
-              Action Protocol
-            </button>
-          </div>
         </div>
 
-        <!-- Reality Check Widget -->
-        <div class="card-surface rounded-xl p-6 relative overflow-hidden group">
-          <div class="relative z-10">
-            <h4
-              class="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2"
-            >
-              Efficiency Audit
-            </h4>
-            <p class="text-2xl font-black text-white mb-1">94% Gain</p>
-            <p class="text-[11px] text-gray-400 leading-relaxed">
-              Reasoning-based auditing catches
-              <span class="text-white font-bold">critical null-safety</span>
-              errors that standard generation misses.
-            </p>
-          </div>
-          <div class="scan-line"></div>
+        <!-- Run Pipeline Button -->
+        <div class="p-5 border-b border-gray-200">
+          <button id="btn-run-pipeline" class="btn-primary" onclick="runThinkingPipeline()">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+            Run Pipeline
+          </button>
         </div>
-      </nav>
 
-      <!-- Main Content Stage -->
-      <main id="main-stage" class="lg:col-span-9 space-y-6">
-        <!-- Dynamic Content -->
+        <!-- API Keys Settings -->
+        <div class="p-5 border-b border-gray-200">
+          <button class="settings-btn" onclick="openApiKeysModal()">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+            </svg>
+            <span>API Keys</span>
+            <div id="api-keys-status" class="ml-auto flex gap-1">
+              <div class="key-status-dot missing" title="Gemini"></div>
+              <div class="key-status-dot missing" title="Claude"></div>
+              <div class="key-status-dot missing" title="OpenAI"></div>
+            </div>
+          </button>
+        </div>
+
+        <!-- Workflow Status -->
+        <div>
+          <div class="section-header" onclick="toggleSection('workflow-status')">
+            <div class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+              </svg>
+              <span class="font-medium text-gray-900">Workflow Status</span>
+            </div>
+            <svg id="workflow-status-chevron" class="w-5 h-5 text-gray-400 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+          <div id="workflow-status-content" class="section-content open">
+            <!-- Prompt Architect -->
+            <div id="step1-item" class="workflow-item" onclick="selectWorkflowStep(1)">
+              <div class="flex items-center gap-3 workflow-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span class="text-sm workflow-label">Prompt Architect</span>
+              </div>
+              <div id="step1-status" class="status-icon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Code Generator -->
+            <div id="step2-item" class="workflow-item" onclick="selectWorkflowStep(2)">
+              <div class="flex items-center gap-3 workflow-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                </svg>
+                <span class="text-sm workflow-label">Code Generator</span>
+              </div>
+              <div id="step2-status" class="status-icon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Code Dissector -->
+            <div id="step3-item" class="workflow-item" onclick="selectWorkflowStep(3)">
+              <div class="flex items-center gap-3 workflow-icon">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <span class="text-sm workflow-label">Code Dissector</span>
+              </div>
+              <div id="step3-status" class="status-icon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="main-stage">
+          <!-- Stage Header -->
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 id="stage-title" class="font-semibold text-gray-900">Active Workflow Stage</h2>
+          </div>
+
+          <!-- Stage Content -->
+          <div id="main-stage" class="p-6">
+            <!-- Ready State (default) -->
+            <div id="ready-state" class="flex flex-col items-center justify-center py-32">
+              <div class="ready-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-gray-900 mb-2">Ready to Generate</h3>
+              <p class="text-gray-500 text-center max-w-md">
+                Enter a prompt in the sidebar and click "Run Pipeline" to start the generation process. Details and progress will appear here.
+              </p>
+            </div>
+
+            <!-- Step 1 Content (hidden by default) -->
+            <div id="step1-content" class="hidden">
+              <div id="step1-loading" class="stage-loading hidden">
+                <div class="spinner mb-4"></div>
+                <p class="text-gray-600">Analyzing your request...</p>
+              </div>
+              <div id="step1-result" class="hidden">
+                <div class="code-container">
+                  <button class="copy-btn" onclick="copyCode('step1-output')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    Copy
+                  </button>
+                  <pre id="step1-output" class="code-font text-gray-300"></pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 2 Content (hidden by default) -->
+            <div id="step2-content" class="hidden">
+              <div id="step2-loading" class="stage-loading hidden">
+                <div class="spinner mb-4"></div>
+                <p class="text-gray-600">Generating code...</p>
+              </div>
+              <div id="step2-result" class="hidden">
+                <div class="code-container">
+                  <button class="copy-btn" onclick="copyCode('step2-output')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                    Copy
+                  </button>
+                  <pre id="step2-output" class="code-font text-gray-300"></pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- Step 3 Content (hidden by default) -->
+            <div id="step3-content" class="hidden">
+              <div id="step3-loading" class="stage-loading hidden">
+                <div class="spinner mb-4"></div>
+                <p class="text-gray-600">Auditing code...</p>
+              </div>
+              <div id="step3-result" class="hidden">
+                <div id="step3-output" class="text-sm text-gray-700"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
     </div>
 
-    <!-- Templates -->
-    <div id="templates" class="hidden">
-      <!-- Overview Template -->
-      <div id="tpl-overview" class="space-y-6">
-        <div class="card-surface rounded-2xl p-8 border-l-4 border-indigo-500">
-          <h2
-            class="text-2xl font-black text-white mb-3 uppercase tracking-tight"
-          >
-            The Architectural Gap
-          </h2>
-          <p class="text-gray-400 leading-relaxed">
-            You are here because standard AI prompting has failed you. It fails
-            because it guesses;
-            <span class="text-indigo-400 font-bold">Gemini 3 Pro</span> reasons.
-            The FlutterFlow compiler is a rigid environment—it does not tolerate
-            ambiguity. This dashboard forces you to adopt a constraint-first
-            workflow.
+    <!-- API Keys Modal -->
+    <div id="api-keys-modal" class="modal-overlay" onclick="closeApiKeysModal(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 class="font-semibold text-lg text-gray-900">API Keys</h2>
+          <button onclick="closeApiKeysModal()" class="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <p class="text-sm text-gray-600">
+            Configure your API keys to use different AI models. Keys are encrypted and stored locally in your browser.
           </p>
-        </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="card-surface rounded-2xl p-6">
-            <h3
-              class="text-sm font-black text-gray-300 mb-6 uppercase tracking-widest"
-            >
-              Build Success Rate
-            </h3>
-            <div class="chart-wrapper">
-              <canvas id="chart-integrity"></canvas>
-            </div>
-          </div>
-          <div class="card-surface rounded-2xl p-6">
-            <h3
-              class="text-sm font-black text-gray-300 mb-6 uppercase tracking-widest"
-            >
-              Failure Analysis
-            </h3>
-            <div class="chart-wrapper">
-              <canvas id="chart-bottlenecks"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Constraints Template -->
-      <div id="tpl-constraints" class="space-y-6">
-        <div class="card-surface rounded-2xl p-8">
-          <h2
-            class="text-xl font-black text-white mb-2 uppercase tracking-tight"
-          >
-            The Non-Negotiables
-          </h2>
-          <p class="text-gray-400 text-sm">
-            Ignoring these rules is a strategic choice to fail.
-          </p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div
-            class="card-surface rounded-xl p-6 hover:border-indigo-500 transition-colors"
-          >
-            <div class="text-indigo-500 mb-4 text-3xl">📦</div>
-            <h4 class="font-bold text-white mb-2 text-sm uppercase">
-              Zero External Deps
-            </h4>
-            <p class="text-xs text-gray-400 leading-relaxed">
-              Do not dream of packages you haven't installed. If it's not in
-              Pubspec, it doesn't exist.
-            </p>
-          </div>
-          <div
-            class="card-surface rounded-xl p-6 hover:border-indigo-500 transition-colors"
-          >
-            <div class="text-indigo-500 mb-4 text-3xl">🛡️</div>
-            <h4 class="font-bold text-white mb-2 text-sm uppercase">
-              Strict Null Safety
-            </h4>
-            <p class="text-xs text-gray-400 leading-relaxed">
-              Dart is strict. Use `required` keywords. Handle every `?`
-              potential null. No lazy coding.
-            </p>
-          </div>
-          <div
-            class="card-surface rounded-xl p-6 hover:border-indigo-500 transition-colors"
-          >
-            <div class="text-indigo-500 mb-4 text-3xl">🧩</div>
-            <h4 class="font-bold text-white mb-2 text-sm uppercase">
-              Boilerplate Lock
-            </h4>
-            <p class="text-xs text-gray-400 leading-relaxed">
-              No `void main()`. Logic must live inside the `StatelessWidget` or
-              `StatefulWidget` class structure.
-            </p>
-          </div>
-          <div
-            class="card-surface rounded-xl p-6 hover:border-indigo-500 transition-colors"
-          >
-            <div class="text-indigo-500 mb-4 text-3xl">🔗</div>
-            <h4 class="font-bold text-white mb-2 text-sm uppercase">
-              Param Sync
-            </h4>
-            <p class="text-xs text-gray-400 leading-relaxed">
-              Dart `final double width` MUST match FF UI Argument `width`. Case
-              sensitive. 1:1 parity.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- AI Tools Template -->
-      <div id="tpl-ai-tools" class="space-y-8">
-        <!-- Optimizer -->
-        <div class="card-surface rounded-2xl p-1 relative">
-          <div
-            class="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-xl"
-          ></div>
-          <div class="relative bg-[#18181b] rounded-xl p-8">
-            <div class="flex justify-between items-center mb-6">
-              <div>
-                <h3
-                  class="text-xl font-black text-white uppercase tracking-tight"
-                >
-                  Prompt Architect
-                </h3>
-                <p class="text-xs text-indigo-400 font-mono mt-1">
-                  > CONFIG: THINKING_LEVEL_HIGH
-                </p>
-              </div>
-              <div
-                class="h-8 w-8 rounded-full bg-indigo-500/20 flex items-center justify-center animate-pulse"
+          <!-- Gemini API Key -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                Google Gemini API Key
+              </span>
+            </label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="gemini-api-key-input" 
+                class="api-key-input pr-10" 
+                placeholder="Enter your Gemini API key"
+              />
+              <button 
+                onclick="toggleKeyVisibility('gemini-api-key-input')" 
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <span class="text-indigo-400 text-lg">✨</span>
-              </div>
-            </div>
-
-            <textarea
-              id="ai-input-prompt"
-              class="w-full h-32 p-4 bg-black/50 border border-white/10 rounded-xl text-sm text-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all font-mono"
-              placeholder="// Describe functionality: 'A credit card widget with Luhn validation...'"
-            ></textarea>
-
-            <div class="mt-4 flex gap-4">
-              <button
-                onclick="runAiOptimizer()"
-                id="btn-run-optimizer"
-                class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20 flex items-center"
-              >
-                Generate Master Prompt
+                <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
               </button>
             </div>
+            <div id="gemini-key-status" class="key-status">
+              <div class="key-status-dot missing"></div>
+              <span class="text-gray-500">Not configured</span>
+            </div>
+          </div>
 
-            <div id="opt-res" class="hidden mt-6 pt-6 border-t border-white/5">
-              <div
-                class="bg-black/80 rounded-lg p-4 border border-white/10 overflow-x-auto"
+          <!-- Anthropic API Key -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-orange-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+                Anthropic Claude API Key
+              </span>
+            </label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="anthropic-api-key-input" 
+                class="api-key-input pr-10" 
+                placeholder="Enter your Claude API key"
+              />
+              <button 
+                onclick="toggleKeyVisibility('anthropic-api-key-input')" 
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                <pre
-                  id="opt-res-text"
-                  class="text-xs text-green-400 font-mono whitespace-pre-wrap"
-                ></pre>
-              </div>
+                <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
             </div>
+            <div id="anthropic-key-status" class="key-status">
+              <div class="key-status-dot missing"></div>
+              <span class="text-gray-500">Not configured</span>
+            </div>
+          </div>
+
+          <!-- OpenAI API Key -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.8956zm16.5963 3.8558L13.1038 8.364l2.0201-1.1638a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.4091-.6813zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"/>
+                </svg>
+                OpenAI API Key
+              </span>
+            </label>
+            <div class="relative">
+              <input 
+                type="password" 
+                id="openai-api-key-input" 
+                class="api-key-input pr-10" 
+                placeholder="Enter your OpenAI API key"
+              />
+              <button 
+                onclick="toggleKeyVisibility('openai-api-key-input')" 
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+            <div id="openai-key-status" class="key-status">
+              <div class="key-status-dot missing"></div>
+              <span class="text-gray-500">Not configured</span>
+            </div>
+          </div>
+
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p class="text-xs text-blue-700">
+              <strong>Security:</strong> Your API keys are encrypted using AES-256 before being stored in your browser's local storage. Keys are never sent to our servers.
+            </p>
           </div>
         </div>
 
-        <!-- Auditor -->
-        <div class="card-surface rounded-2xl p-8 border border-white/5">
-          <h3
-            class="text-xl font-black text-white uppercase tracking-tight mb-2"
+        <div class="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+          <button 
+            onclick="clearAllApiKeys()" 
+            class="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
           >
-            Code Dissector
-          </h3>
-          <p class="text-xs text-gray-500 mb-6">
-            Paste raw code. The Auditor will expose architectural violations.
-          </p>
-
-          <textarea
-            id="ai-input-code"
-            class="w-full h-40 p-4 bg-black/50 border border-white/10 rounded-xl text-xs text-indigo-300 font-mono focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
-            placeholder="// Paste Dart code here..."
-          ></textarea>
-
-          <div class="mt-4">
-            <button
-              onclick="runAiAuditor()"
-              id="btn-run-auditor"
-              class="bg-purple-600 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-purple-500 transition-all shadow-lg shadow-purple-500/20"
-            >
-              Run Integration Audit
-            </button>
-          </div>
-
-          <div id="audit-res" class="hidden mt-6 space-y-3">
-            <!-- Results injected here -->
-          </div>
-        </div>
-      </div>
-
-      <!-- Actions Template -->
-      <div id="tpl-actions" class="space-y-6">
-        <div class="card-surface rounded-2xl p-8">
-          <h2
-            class="text-2xl font-black text-white mb-6 uppercase tracking-tight"
+            Clear All Keys
+          </button>
+          <button 
+            onclick="saveApiKeys()" 
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
           >
-            Protocol Alpha
-          </h2>
-          <div class="space-y-4">
-            <div
-              class="flex items-start gap-4 p-4 bg-green-500/5 border border-green-500/20 rounded-xl"
-            >
-              <div class="text-green-500 font-black">01</div>
-              <div>
-                <h4 class="text-white font-bold text-sm">
-                  Standardize Prompts
-                </h4>
-                <p class="text-gray-400 text-xs mt-1">
-                  Stop typing new prompts. Use the Master Template generated by
-                  the Optimizer for 100% of your widgets.
-                </p>
-              </div>
-            </div>
-            <div
-              class="flex items-start gap-4 p-4 bg-indigo-500/5 border border-indigo-500/20 rounded-xl"
-            >
-              <div class="text-indigo-500 font-black">02</div>
-              <div>
-                <h4 class="text-white font-bold text-sm">Audit Everything</h4>
-                <p class="text-gray-400 text-xs mt-1">
-                  If the code hasn't passed the G3 Auditor, it doesn't go into
-                  FlutterFlow. No exceptions.
-                </p>
-              </div>
-            </div>
-            <div
-              class="flex items-start gap-4 p-4 bg-red-500/5 border border-red-500/20 rounded-xl"
-            >
-              <div class="text-red-500 font-black">03</div>
-              <div>
-                <h4 class="text-white font-bold text-sm">Kill Dependencies</h4>
-                <p class="text-gray-400 text-xs mt-1">
-                  Remove all fancy 3rd party libraries from your requests. Stick
-                  to core Material/Flutter widgets for reliability.
-                </p>
-              </div>
-            </div>
-          </div>
+            Save Keys
+          </button>
         </div>
       </div>
     </div>

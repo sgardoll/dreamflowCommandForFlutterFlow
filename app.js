@@ -1,12 +1,351 @@
 // --- CONFIGURATION ---
-const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-const anthropicApiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
-const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY || "";
+// Environment keys (fallback)
+const envGeminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || ""
+const envAnthropicApiKey = import.meta.env.VITE_ANTHROPIC_API_KEY || ""
+const envOpenaiApiKey = import.meta.env.VITE_OPENAI_API_KEY || ""
 
 // Model Configuration
-const PROMPT_ARCHITECT_MODEL = "gemini-3-flash-preview";
-const CODE_DISSECTOR_MODEL = "gemini-3-flash-preview";
-const FALLBACK_MODEL = "gemini-2.5-flash-preview-09-2025";
+const PROMPT_ARCHITECT_MODEL = "gemini-3-flash-preview"
+const CODE_DISSECTOR_MODEL = "gemini-3-flash-preview"
+const FALLBACK_MODEL = "gemini-2.5-flash-preview-09-2025"
+
+// --- SECURE STORAGE (AES-256-GCM encryption) ---
+const STORAGE_KEY_PREFIX = "ccc_api_key_"
+const ENCRYPTION_KEY_NAME = "ccc_encryption_key"
+
+// Generate or retrieve encryption key using Web Crypto API
+async function getEncryptionKey() {
+  const storedKey = sessionStorage.getItem(ENCRYPTION_KEY_NAME)
+  
+  if (storedKey) {
+    const keyData = JSON.parse(storedKey)
+    return await crypto.subtle.importKey(
+      "jwk",
+      keyData,
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"]
+    )
+  }
+  
+  // Generate a new key derived from a device fingerprint + random salt
+  const fingerprint = await generateDeviceFingerprint()
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  
+  // Use PBKDF2 to derive a key from the fingerprint
+  const encoder = new TextEncoder()
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(fingerprint),
+    "PBKDF2",
+    false,
+    ["deriveBits", "deriveKey"]
+  )
+  
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  )
+  
+  // Store the key in session storage (clears when browser closes)
+  const exportedKey = await crypto.subtle.exportKey("jwk", key)
+  sessionStorage.setItem(ENCRYPTION_KEY_NAME, JSON.stringify(exportedKey))
+  
+  // Store salt in localStorage for key regeneration
+  localStorage.setItem(STORAGE_KEY_PREFIX + "salt", arrayBufferToBase64(salt))
+  
+  return key
+}
+
+// Generate a simple device fingerprint for key derivation
+async function generateDeviceFingerprint() {
+  const components = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + "x" + screen.height,
+    new Date().getTimezoneOffset().toString(),
+    navigator.hardwareConcurrency?.toString() || "unknown"
+  ]
+  
+  const fingerprint = components.join("|")
+  const encoder = new TextEncoder()
+  const data = encoder.encode(fingerprint)
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
+  return arrayBufferToBase64(hashBuffer)
+}
+
+// Encrypt data using AES-256-GCM
+async function encryptData(plaintext) {
+  const key = await getEncryptionKey()
+  const encoder = new TextEncoder()
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encoder.encode(plaintext)
+  )
+  
+  // Combine IV + encrypted data
+  const combined = new Uint8Array(iv.length + encrypted.byteLength)
+  combined.set(iv)
+  combined.set(new Uint8Array(encrypted), iv.length)
+  
+  return arrayBufferToBase64(combined)
+}
+
+// Decrypt data using AES-256-GCM
+async function decryptData(encryptedBase64) {
+  try {
+    const key = await getEncryptionKey()
+    const combined = base64ToArrayBuffer(encryptedBase64)
+    
+    const iv = combined.slice(0, 12)
+    const encrypted = combined.slice(12)
+    
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      encrypted
+    )
+    
+    const decoder = new TextDecoder()
+    return decoder.decode(decrypted)
+  } catch (error) {
+    console.error("Decryption failed:", error)
+    return null
+  }
+}
+
+// Helper functions for base64 encoding/decoding
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer)
+  let binary = ""
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i])
+  }
+  return btoa(binary)
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
+}
+
+// --- API KEY MANAGEMENT ---
+
+async function saveApiKey(provider, apiKey) {
+  if (!apiKey || apiKey.trim() === "") {
+    localStorage.removeItem(STORAGE_KEY_PREFIX + provider)
+    return
+  }
+  
+  const encrypted = await encryptData(apiKey.trim())
+  localStorage.setItem(STORAGE_KEY_PREFIX + provider, encrypted)
+}
+
+async function getApiKey(provider) {
+  // Only check user-stored key - no environment fallback
+  const encrypted = localStorage.getItem(STORAGE_KEY_PREFIX + provider)
+  if (encrypted) {
+    const decrypted = await decryptData(encrypted)
+    if (decrypted) return decrypted
+  }
+  
+  // Return empty string if no user key is configured
+  return ""
+}
+
+function hasStoredKey(provider) {
+  return localStorage.getItem(STORAGE_KEY_PREFIX + provider) !== null
+}
+
+function hasEnvKey(provider) {
+  // Environment keys are not used by default
+  return false
+}
+
+// Get current active API keys (for use in API calls)
+let geminiApiKey = ""
+let anthropicApiKey = ""
+let openaiApiKey = ""
+
+async function initializeApiKeys() {
+  geminiApiKey = await getApiKey("gemini")
+  anthropicApiKey = await getApiKey("anthropic")
+  openaiApiKey = await getApiKey("openai")
+  updateApiKeyStatusIndicators()
+}
+
+// --- API KEY UI FUNCTIONS ---
+
+function openApiKeysModal() {
+  const modal = document.getElementById("api-keys-modal")
+  modal.classList.add("open")
+  
+  // Load current keys into inputs (masked)
+  loadApiKeyInputs()
+}
+
+function closeApiKeysModal(event) {
+  if (event && event.target !== event.currentTarget) return
+  const modal = document.getElementById("api-keys-modal")
+  modal.classList.remove("open")
+}
+
+async function loadApiKeyInputs() {
+  const geminiInput = document.getElementById("gemini-api-key-input")
+  const anthropicInput = document.getElementById("anthropic-api-key-input")
+  const openaiInput = document.getElementById("openai-api-key-input")
+  
+  // Show masked value if key exists
+  if (hasStoredKey("gemini")) {
+    geminiInput.value = ""
+    geminiInput.placeholder = "Key saved (enter new to replace)"
+  } else {
+    geminiInput.placeholder = "Enter your Gemini API key"
+  }
+  
+  if (hasStoredKey("anthropic")) {
+    anthropicInput.value = ""
+    anthropicInput.placeholder = "Key saved (enter new to replace)"
+  } else {
+    anthropicInput.placeholder = "Enter your Claude API key"
+  }
+  
+  if (hasStoredKey("openai")) {
+    openaiInput.value = ""
+    openaiInput.placeholder = "Key saved (enter new to replace)"
+  } else {
+    openaiInput.placeholder = "Enter your OpenAI API key"
+  }
+  
+  updateModalKeyStatuses()
+}
+
+function updateModalKeyStatuses() {
+  updateKeyStatus("gemini", "gemini-key-status")
+  updateKeyStatus("anthropic", "anthropic-key-status")
+  updateKeyStatus("openai", "openai-key-status")
+}
+
+function updateKeyStatus(provider, statusElementId) {
+  const statusEl = document.getElementById(statusElementId)
+  if (!statusEl) return
+  
+  const dot = statusEl.querySelector(".key-status-dot")
+  const text = statusEl.querySelector("span")
+  
+  if (hasStoredKey(provider)) {
+    dot.className = "key-status-dot configured"
+    text.className = "text-green-600"
+    text.textContent = "User key configured"
+  } else {
+    dot.className = "key-status-dot missing"
+    text.className = "text-gray-500"
+    text.textContent = "Not configured"
+  }
+}
+
+function updateApiKeyStatusIndicators() {
+  const container = document.getElementById("api-keys-status")
+  if (!container) return
+  
+  const dots = container.querySelectorAll(".key-status-dot")
+  const providers = ["gemini", "anthropic", "openai"]
+  
+  dots.forEach((dot, index) => {
+    const provider = providers[index]
+    if (hasStoredKey(provider)) {
+      dot.className = "key-status-dot configured"
+      dot.title = provider.charAt(0).toUpperCase() + provider.slice(1) + " (User key)"
+    } else {
+      dot.className = "key-status-dot missing"
+      dot.title = provider.charAt(0).toUpperCase() + provider.slice(1) + " (Not configured)"
+    }
+  })
+}
+
+async function saveApiKeys() {
+  const geminiInput = document.getElementById("gemini-api-key-input")
+  const anthropicInput = document.getElementById("anthropic-api-key-input")
+  const openaiInput = document.getElementById("openai-api-key-input")
+  
+  // Only save if user entered a new value
+  if (geminiInput.value.trim()) {
+    await saveApiKey("gemini", geminiInput.value)
+  }
+  if (anthropicInput.value.trim()) {
+    await saveApiKey("anthropic", anthropicInput.value)
+  }
+  if (openaiInput.value.trim()) {
+    await saveApiKey("openai", openaiInput.value)
+  }
+  
+  // Reinitialize keys
+  await initializeApiKeys()
+  
+  // Update UI
+  loadApiKeyInputs()
+  
+  // Show confirmation
+  const btn = document.querySelector("#api-keys-modal .bg-blue-500")
+  const originalText = btn.textContent
+  btn.textContent = "Saved!"
+  btn.classList.remove("bg-blue-500", "hover:bg-blue-600")
+  btn.classList.add("bg-green-500")
+  
+  setTimeout(() => {
+    btn.textContent = originalText
+    btn.classList.remove("bg-green-500")
+    btn.classList.add("bg-blue-500", "hover:bg-blue-600")
+  }, 1500)
+}
+
+async function clearAllApiKeys() {
+  if (!confirm("Are you sure you want to clear all stored API keys?")) return
+  
+  localStorage.removeItem(STORAGE_KEY_PREFIX + "gemini")
+  localStorage.removeItem(STORAGE_KEY_PREFIX + "anthropic")
+  localStorage.removeItem(STORAGE_KEY_PREFIX + "openai")
+  
+  // Reinitialize keys (will fall back to env keys)
+  await initializeApiKeys()
+  
+  // Update UI
+  loadApiKeyInputs()
+}
+
+function toggleKeyVisibility(inputId) {
+  const input = document.getElementById(inputId)
+  const btn = input.nextElementSibling
+  const icon = btn.querySelector("svg")
+  
+  if (input.type === "password") {
+    input.type = "text"
+    icon.innerHTML = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+    `
+  } else {
+    input.type = "password"
+    icon.innerHTML = `
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+    `
+  }
+}
 
 // --- APP STATE ---
 let pipelineState = {
@@ -20,11 +359,14 @@ let pipelineState = {
 // --- CORE API FUNCTIONS ---
 
 async function checkConnection() {
+  // Initialize API keys from storage/env
+  await initializeApiKeys()
+  
   if (!geminiApiKey) {
-    console.error("Gemini API Key not found. Check .env file for VITE_GEMINI_API_KEY");
-    return false;
+    console.warn("Gemini API Key not found. Configure via API Keys settings or .env file")
+    return false
   }
-  return true;
+  return true
 }
 
 async function callGemini(
@@ -1198,20 +1540,26 @@ function highlightCode(code, language = "dart") {
 
 // --- INITIALIZATION ---
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   // Initialize highlight.js
   hljs.configure({
     tabReplace: "  ",
     classPrefix: "hljs-",
-  });
+  })
 
-  checkConnection();
-});
+  // Initialize API keys and check connection
+  await checkConnection()
+})
 
 // Global exports
-window.runThinkingPipeline = runThinkingPipeline;
-window.toggleStep = toggleStep;
-window.toggleSection = toggleSection;
-window.selectWorkflowStep = selectWorkflowStep;
-window.copyCode = copyCode;
-window.retryWithDifferentModel = retryWithDifferentModel;
+window.runThinkingPipeline = runThinkingPipeline
+window.toggleStep = toggleStep
+window.toggleSection = toggleSection
+window.selectWorkflowStep = selectWorkflowStep
+window.copyCode = copyCode
+window.retryWithDifferentModel = retryWithDifferentModel
+window.openApiKeysModal = openApiKeysModal
+window.closeApiKeysModal = closeApiKeysModal
+window.saveApiKeys = saveApiKeys
+window.clearAllApiKeys = clearAllApiKeys
+window.toggleKeyVisibility = toggleKeyVisibility
